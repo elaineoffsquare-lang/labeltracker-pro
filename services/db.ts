@@ -43,7 +43,7 @@ const INITIAL_STATE: DatabaseSchema = {
 export const db = {
   getConfig: (): SystemConfig => {
     const cfg = localStorage.getItem(CONFIG_KEY);
-    return cfg ? JSON.parse(cfg) : { serverUrl: '', isCloudEnabled: false };
+    return cfg ? JSON.parse(cfg) : { serverUrl: '', isCloudEnabled: false, isAutoSyncEnabled: false, connectionMode: 'LAN' };
   },
 
   saveConfig: (cfg: SystemConfig) => {
@@ -81,16 +81,39 @@ export const db = {
     if (!config.serverUrl) return { success: false, message: "No Server URL configured." };
 
     try {
-      // In a real setup, you would use:
-      // const response = await fetch(`${config.serverUrl}/api/sync`, {
-      //   method: 'POST',
-      //   body: JSON.stringify(db.get())
-      // });
+      // In a real setup, you would first FETCH the server's data, merge it with local data, 
+      // and then PUSH the merged data back. This simulation mimics that process.
       
       // Simulating network call to your internal infrastructure
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
       
-      db.save({ ...db.get(), lastSync: Date.now() });
+      const currentState = db.get();
+      
+      // SIMULATION: To demonstrate syncing, we'll pretend the server sent us a new order
+      // that this device didn't have. In a real app, this data would come from the fetch response.
+      const simulatedNewOrderFromServer: Order = {
+        id: `o${Date.now()}`,
+        orderNumber: `ORD-SYNC-${Math.floor(Math.random() * 100)}`,
+        customerName: 'Synced Customer',
+        productId: 'p1',
+        productName: 'Premium Matte Vinyl',
+        quantity: 2,
+        sellingPrice: 22.50,
+        totalAmount: 45.00,
+        orderDate: Date.now(),
+        paymentStatus: PaymentStatus.PAID
+      };
+
+      // A simple merge: add the new order if it doesn't exist.
+      const orderExists = currentState.orders.some(o => o.orderNumber === simulatedNewOrderFromServer.orderNumber);
+      
+      const updatedState = {
+        ...currentState,
+        orders: orderExists ? currentState.orders : [simulatedNewOrderFromServer, ...currentState.orders],
+        lastSync: Date.now()
+      };
+
+      db.save(updatedState);
       return { success: true, message: "Synchronized with " + config.serverUrl };
     } catch (e) {
       return { success: false, message: "Connection to server failed." };
@@ -100,6 +123,7 @@ export const db = {
   reset: () => {
     if (confirm('Are you sure you want to factory reset? This will delete ALL data.')) {
         localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(CONFIG_KEY);
         window.location.reload();
     }
   }
