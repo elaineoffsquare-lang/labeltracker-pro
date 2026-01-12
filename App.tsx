@@ -6,7 +6,6 @@ import Dashboard from './components/dashboard/Dashboard';
 import ProductList from './components/products/ProductList';
 import OrderList from './components/orders/OrderList';
 import ShipmentListScreen from './ui/shipment/ShipmentListScreen';
-import LiveAssistantScreen from './ui/live/LiveAssistantScreen';
 import HelpScreen from './ui/help/HelpScreen';
 import SystemScreen from './ui/system/SystemScreen';
 import { db } from './services/db';
