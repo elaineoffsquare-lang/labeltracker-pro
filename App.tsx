@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Screen } from './navigation/Screen';
 import Layout from './components/Layout';
 import Dashboard from './components/dashboard/Dashboard';
@@ -15,21 +15,71 @@ const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.Dashboard);
   const [syncStatus, setSyncStatus] = useState<'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [dbState, setDbState] = useState(db.get());
+  const autoSyncIntervalRef = useRef<number | null>(null);
 
   const refreshData = useCallback(() => {
     setDbState(db.get());
   }, []);
 
   useEffect(() => {
-    const handleDbUpdate = () => refreshData();
+    const handleDbUpdate = () => {
+      refreshData();
+      setupAutoSync(); // Re-evaluate auto-sync when config changes
+    };
     window.addEventListener('db_updated', handleDbUpdate);
-    return () => window.removeEventListener('db_updated', handleDbUpdate);
+    setupAutoSync(); // Initial setup
+
+    return () => {
+      window.removeEventListener('db_updated', handleDbUpdate);
+      if (autoSyncIntervalRef.current) {
+        clearInterval(autoSyncIntervalRef.current);
+      }
+    };
   }, [refreshData]);
+
+  const setupAutoSync = () => {
+    if (autoSyncIntervalRef.current) {
+      clearInterval(autoSyncIntervalRef.current);
+      autoSyncIntervalRef.current = null;
+    }
+    
+    const config = db.getConfig();
+    if (config.isAutoSyncEnabled && config.serverUrl) {
+      autoSyncIntervalRef.current = window.setInterval(async () => {
+        if (syncStatus !== 'SYNCING') { // Prevent overlapping sync calls
+          setSyncStatus('SYNCING');
+          const result = await db.sync();
+          setSyncStatus(result.success ? 'SUCCESS' : 'ERROR');
+          setTimeout(() => setSyncStatus('IDLE'), 2000);
+        }
+      }, 30000); // Sync every 30 seconds
+    }
+  };
+
 
   const updateDb = (updater: (prevState: typeof dbState) => typeof dbState) => {
     const newState = updater(dbState);
     db.save(newState);
-    // No need to call refreshData, as the event listener will handle it.
+  };
+
+  const handleAddOrder = (o: Omit<Order, 'id' | 'orderNumber' | 'totalAmount'>) => {
+    updateDb(s => {
+      const product = s.products.find(p => p.id === o.productId);
+      if (!product) return s;
+
+      const newOrder: Order = {
+        ...o,
+        id: `o${Date.now()}`,
+        orderNumber: `ORD-${Date.now().toString().slice(-4)}`,
+        totalAmount: o.sellingPrice * o.quantity,
+      };
+      
+      const updatedProducts = s.products.map(p => 
+        p.id === o.productId ? { ...p, stockQuantity: p.stockQuantity - o.quantity } : p
+      );
+      
+      return {...s, products: updatedProducts, orders: [newOrder, ...s.orders]};
+    });
   };
   
   const currentUser = dbState.users[0];
@@ -46,23 +96,7 @@ const App: React.FC = () => {
       case Screen.Orders: return <OrderList 
         orders={dbState.orders}
         products={dbState.products}
-        onAdd={(o: Omit<Order, 'id' | 'orderNumber' | 'totalAmount'>) => updateDb(s => {
-          const product = s.products.find(p => p.id === o.productId);
-          if (!product) return s;
-
-          const newOrder: Order = {
-            ...o,
-            id: `o${Date.now()}`,
-            orderNumber: `ORD-${Date.now().toString().slice(-4)}`,
-            totalAmount: o.sellingPrice * o.quantity,
-          };
-          
-          const updatedProducts = s.products.map(p => 
-            p.id === o.productId ? { ...p, stockQuantity: p.stockQuantity - o.quantity } : p
-          );
-          
-          return {...s, products: updatedProducts, orders: [newOrder, ...s.orders]};
-        })}
+        onAdd={handleAddOrder}
         onDelete={(id: string) => updateDb(s => {
           const order = s.orders.find(o => o.id === id);
           if (!order) return s;
@@ -81,7 +115,6 @@ const App: React.FC = () => {
           const newShipment: Shipment = {...shipment, id: `s${Date.now()}`};
           let products = s.products;
           
-          // Instantly update stock if a delivered inbound shipment is added
           if (newShipment.productId && newShipment.quantity && newShipment.shipmentType === ShipmentType.INBOUND && newShipment.status === ShipmentStatus.DELIVERED) {
             products = s.products.map(p => 
               p.id === newShipment.productId ? { ...p, stockQuantity: p.stockQuantity + newShipment.quantity! } : p
@@ -97,12 +130,10 @@ const App: React.FC = () => {
           const updatedShipments = s.shipments.map(ship => ship.id === id ? {...ship, status} : ship);
           let products = s.products;
 
-          // Business Rule: On marking INBOUND as DELIVERED, increase stock
           if (shipment.productId && shipment.quantity && shipment.shipmentType === ShipmentType.INBOUND && oldStatus !== ShipmentStatus.DELIVERED && status === ShipmentStatus.DELIVERED) {
             products = s.products.map(p => {
               if (p.id === shipment.productId) {
                 const updatedProduct = { ...p, stockQuantity: p.stockQuantity + shipment.quantity! };
-                // Also update product's last invoice details
                 if (shipment.invoiceNumber) {
                   updatedProduct.lastInvoiceNumber = shipment.invoiceNumber;
                   updatedProduct.lastInvoiceDate = shipment.invoiceDateMillis || Date.now();
@@ -115,9 +146,8 @@ const App: React.FC = () => {
           return {...s, products, shipments: updatedShipments};
         })}
       />;
-      case Screen.LiveAssistant: return <LiveAssistantScreen />;
       case Screen.Help: return <HelpScreen />;
-      case Screen.Users: return <SystemScreen setSyncStatus={setSyncStatus} />;
+      case Screen.Users: return <SystemScreen setSyncStatus={setSyncStatus} dbState={dbState} />;
       default: return <Dashboard state={dbState} />;
     }
   };
