@@ -3,5 +3,6 @@
   "short_name": "LT Pro",
   "description": "High-performance Supply Chain & Inventory Management System",
   "display": "standalone",
-  "orientation": "any"
+  "orientation": "any",
+  "requestFramePermissions": []
 }
