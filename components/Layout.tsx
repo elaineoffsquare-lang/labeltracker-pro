@@ -14,7 +14,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, curr
     { id: 'products', label: 'Products', icon: '📦' },
     { id: 'orders', label: 'Orders', icon: '🛒' },
     { id: 'shipments', label: 'Logistics', icon: '🚚' },
-    { id: 'liveassistant', label: 'Live Assistant', icon: '🎙️' },
     { id: 'users', label: 'System', icon: '⚙️' },
     { id: 'help', label: 'Help / Guide', icon: '❓' },
   ];
