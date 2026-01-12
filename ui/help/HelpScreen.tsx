@@ -6,13 +6,42 @@ const HelpScreen: React.FC = () => {
     <div className="space-y-12 animate-in fade-in duration-500">
       <div className="text-center">
         <h2 className="text-3xl font-black text-[#1E293B] tracking-tight">Getting Started Guide</h2>
-        <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.25em] mt-1.5">Use LabelTracker Pro like a native app on your phone</p>
+        <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.25em] mt-1.5">Sync data across all your devices</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Sync Instructions */}
+        <div className="lg:col-span-2 bg-white p-10 rounded-[40px] shadow-2xl shadow-slate-200/50 border border-slate-100">
+          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Linking Devices (LAN & VPN)</h3>
+          <p className="text-sm text-slate-500 mb-8">Create a unified database across your devices, whether in the office or remote.</p>
+
+          <div className="space-y-6">
+            <div className="p-6 bg-blue-50/70 rounded-3xl border border-blue-100">
+                <h5 className="font-bold text-blue-800 text-lg mb-2">Option A: In The Office (LAN Sync)</h5>
+                <ol className="list-decimal list-inside space-y-3 text-sm text-blue-900/80">
+                  <li><b>Choose Primary Device:</b> Designate one office PC as your "main" server.</li>
+                  <li><b>Find Its Local IP:</b> On that PC, find its IP Address (e.g., `192.168.1.XX`) in network settings.</li>
+                  <li><b>Connect Other Devices:</b> On your other devices (on the same Wi-Fi), go to `System`, select `Local Network (LAN)`, and enter the Primary's IP, adding `:3000` at the end.</li>
+                  <li><b>Enable Auto-Sync:</b> Toggle on for automatic data updates.</li>
+                </ol>
+            </div>
+            
+            <div className="p-6 bg-indigo-50/70 rounded-3xl border border-indigo-100">
+                <h5 className="font-bold text-indigo-800 text-lg mb-2">Option B: Remote Access (VPN Sync)</h5>
+                <p className="text-sm text-indigo-900/80 mb-4">This requires a one-time setup and your own VPN software. The app does not provide the VPN service.</p>
+                <ol className="list-decimal list-inside space-y-3 text-sm text-indigo-900/80">
+                  <li><b>Activate VPN:</b> On your remote device (e.g., your laptop at home), connect to your office network using your company's VPN client (like Cisco AnyConnect, OpenVPN, etc).</li>
+                  <li><b>IT Setup (Port Forwarding):</b> Your office IT admin must configure the main router to forward external traffic on port `3000` to the internal IP address of your Primary Device. This is a crucial step to allow access from outside.</li>
+                  <li><b>Find Public IP:</b> Get your office's Public IP address (your IT admin will have this, or you can Google "what is my IP" from the Primary Device).</li>
+                  <li><b>Configure App:</b> In `System`, select `Remote via VPN` and enter the Public IP or domain name (e.g. `http://203.0.113.55:3000`).</li>
+                </ol>
+            </div>
+          </div>
+        </div>
+
         {/* Install Instructions */}
-        <div className="bg-white p-10 rounded-[40px] shadow-2xl shadow-slate-200/50 border border-slate-100">
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Install on Your Phone & PC</h3>
+        <div className="bg-white p-10 rounded-[40px] shadow-lg shadow-slate-200/20 border border-slate-100">
+           <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">Install on Phone & PC</h3>
           <p className="text-sm text-slate-500 mb-8">Get a home screen icon and a full-screen experience, no app store needed.</p>
 
           <div className="mb-8">
@@ -33,43 +62,6 @@ const HelpScreen: React.FC = () => {
               <li>Click it and then click <span className="font-bold text-blue-600">'Install'</span>.</li>
               <li>The app will be added to your desktop (PC) or home screen (Android).</li>
             </ol>
-          </div>
-        </div>
-
-        {/* Data Storage Explanation */}
-        <div className="bg-white p-10 rounded-[40px] shadow-lg shadow-slate-200/20 border border-slate-100">
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight mb-2">How Your Data is Linked</h3>
-          <p className="text-sm text-slate-500 mb-8">Understand how your inventory information is saved and synced.</p>
-          
-          <div className="space-y-6">
-              <div className="flex items-start space-x-4">
-                  <div className="text-2xl mt-1">📱</div>
-                  <div>
-                      <h5 className="font-bold text-slate-700">Local-First Storage</h5>
-                      <p className="text-slate-600 text-sm">All data you enter is saved directly and securely on your current device (e.g., your phone). This makes the app very fast and usable even without an internet connection.</p>
-                  </div>
-              </div>
-              <div className="flex items-start space-x-4">
-                  <div className="text-2xl mt-1">🔄</div>
-                  <div>
-                      <h5 className="font-bold text-slate-700">Manual Syncing</h5>
-                      <p className="text-slate-600 text-sm">The data on your phone is <span className="font-bold">separate</span> from the data on your PC. They do not sync automatically in the background.</p>
-                  </div>
-              </div>
-              <div className="flex items-start space-x-4">
-                  <div className="text-2xl mt-1">⚙️</div>
-                  <div>
-                      <h5 className="font-bold text-slate-700">How to Link Devices</h5>
-                      <p className="text-slate-600 text-sm">To share one database, you must set up a central server on your office PC and use the <span className="font-bold">System {'>'} Internal Network Link</span> feature on your other devices (like your phone) to connect to it. This is an advanced setup for multi-user environments.</p>
-                  </div>
-              </div>
-              <div className="flex items-start space-x-4">
-                  <div className="text-2xl mt-1">📤</div>
-                  <div>
-                      <h5 className="font-bold text-slate-700">Backup Your Data</h5>
-                      <p className="text-slate-600 text-sm">You can download a full backup of your device's data at any time. Go to the <span className="font-bold">System</span> tab and click <span className="font-bold text-emerald-600">'Export to JSON'</span>.</p>
-                  </div>
-              </div>
           </div>
         </div>
       </div>
