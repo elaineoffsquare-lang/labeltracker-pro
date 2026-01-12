@@ -7,6 +7,8 @@ const CONFIG_KEY = 'labeltracker_sys_config';
 interface SystemConfig {
   serverUrl: string;
   isCloudEnabled: boolean;
+  isAutoSyncEnabled: boolean;
+  connectionMode: 'LAN' | 'VPN';
 }
 
 export interface DatabaseSchema {
