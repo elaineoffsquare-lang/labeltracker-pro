@@ -34,10 +34,12 @@ const INITIAL_STATE: DatabaseSchema = {
   orders: [],
   shipments: [],
   groups: [
-    { id: 'g-initial', name: 'Administrators', permissions: Object.values(Permission) }
+    { id: 'g-admin', name: 'Administrators', permissions: Object.values(Permission) },
+    { id: 'g-warehouse', name: 'Warehouse', permissions: [Permission.MANAGE_INVENTORY, Permission.MANAGE_ORDERS, Permission.MANAGE_LOGISTICS, Permission.VIEW_REPORTS] },
+    { id: 'g-sales', name: 'Sales', permissions: [Permission.MANAGE_ORDERS, Permission.VIEW_REPORTS] },
   ],
   users: [
-    { id: 'u-initial', username: 'admin', password: 'password', displayName: 'Default Admin', role: UserRole.ADMIN, groupId: 'g-initial' }
+    { id: 'u-initial', username: 'admin', password: 'password', displayName: 'Default Admin', role: UserRole.ADMIN, groupId: 'g-admin' }
   ]
 };
 
@@ -94,12 +96,14 @@ export const db = {
     }
   },
 
-  save: (data: DatabaseSchema) => {
+  save: (data: DatabaseSchema, options?: { silent?: boolean }) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       ...data,
       lastSync: Date.now()
     }));
-    window.dispatchEvent(new Event('db_updated'));
+    if (!options?.silent) {
+      window.dispatchEvent(new Event('db_updated'));
+    }
   },
 
   sync: async (): Promise<{success: boolean, message: string}> => {
