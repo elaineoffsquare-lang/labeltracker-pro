@@ -69,16 +69,53 @@ const SystemScreen: React.FC<SystemScreenProps> = ({ setSyncStatus, dbState, onC
                 </button>
               </div>
 
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Primary Node Address</label>
-                <input 
-                  type="text"
-                  placeholder={config.connectionMode === 'LAN' ? "e.g. 192.168.1.50:3000" : "office-vpn.local:3000"}
-                  value={config.serverUrl}
-                  onChange={(e) => updateConfig({ serverUrl: e.target.value })}
-                  className="w-full p-4 bg-white border border-blue-200 rounded-2xl outline-none font-bold text-blue-900 focus:ring-4 focus:ring-blue-500/10 transition-all"
-                />
-              </div>
+              {config.connectionMode === 'LAN' ? (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Primary Node Address (LAN IP)</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. 192.168.1.50:3000"
+                      value={config.serverUrl}
+                      onChange={(e) => updateConfig({ serverUrl: e.target.value })}
+                      className="w-full p-4 bg-white border border-blue-200 rounded-2xl outline-none font-bold text-blue-900 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Shared Network Path (Optional)</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. \\OFFICE-PC\SharedData"
+                      value={config.lanPath || ''}
+                      onChange={(e) => updateConfig({ lanPath: e.target.value })}
+                      className="w-full p-4 bg-white border border-blue-200 rounded-2xl outline-none font-bold text-blue-900 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Public Node Address (IP or Domain)</label>
+                    <input 
+                      type="text"
+                      placeholder="office-vpn.local:3000"
+                      value={config.serverUrl}
+                      onChange={(e) => updateConfig({ serverUrl: e.target.value })}
+                      className="w-full p-4 bg-white border border-blue-200 rounded-2xl outline-none font-bold text-blue-900 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-blue-400 uppercase tracking-widest block">Shared Network Path (Optional)</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. \\OFFICE-SRV\SharedData"
+                      value={config.vpnPath || ''}
+                      onChange={(e) => updateConfig({ vpnPath: e.target.value })}
+                      className="w-full p-4 bg-white border border-blue-200 rounded-2xl outline-none font-bold text-blue-900 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6 space-y-2">
                 <div className="flex items-center justify-between bg-white/50 p-3 rounded-2xl">
