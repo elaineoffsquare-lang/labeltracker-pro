@@ -98,23 +98,27 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
 
       while (response.functionCalls && response.functionCalls.length > 0) {
         const functionCalls = response.functionCalls;
-        const functionResponses: FunctionResponsePart[] = [];
+        // Correctly type the array for function responses.
+        const functionResponses: { functionResponse: FunctionResponsePart }[] = [];
         
         for (const call of functionCalls) {
           if (call.name === 'addOrder') {
-            const { productId, customerName, quantity, paymentStatus } = call.args;
+            // FIX: Cast arguments from the function call to their expected types to resolve type errors.
+            const { productId, customerName, quantity, paymentStatus } = call.args as { productId: string, customerName: string, quantity: number, paymentStatus: string };
             const product = state.products.find(p => p.id === productId);
 
             if (!product) {
+               // FIX: Corrected the structure of FunctionResponsePart. It should be wrapped in a `functionResponse` property to form a valid `Part`.
                functionResponses.push({
-                id: call.id, name: call.name, response: { result: `Error: Product with ID ${productId} not found.`}
+                functionResponse: { name: call.name, response: { result: `Error: Product with ID ${productId} not found.`}}
               });
               continue;
             }
 
             if (product.stockQuantity < quantity) {
+              // FIX: Corrected the structure of FunctionResponsePart. It should be wrapped in a `functionResponse` property to form a valid `Part`.
               functionResponses.push({
-                id: call.id, name: call.name, response: { result: `Error: Not enough stock for ${product.productName}. Only ${product.stockQuantity} rolls available.`}
+                functionResponse: { name: call.name, response: { result: `Error: Not enough stock for ${product.productName}. Only ${product.stockQuantity} rolls available.`}}
               });
               continue;
             }
@@ -129,15 +133,17 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
               orderDate: Date.now(),
             });
             
+            // FIX: Corrected the structure of FunctionResponsePart. It should be wrapped in a `functionResponse` property to form a valid `Part`.
             functionResponses.push({
-              id: call.id, name: call.name, response: { result: `Successfully created order for ${quantity} rolls of ${product.productName} for ${customerName}.`}
+              functionResponse: { name: call.name, response: { result: `Successfully created order for ${quantity} rolls of ${product.productName} for ${customerName}.`}}
             });
             addTranscript({ author: 'system', text: `Order created for ${customerName}.` });
           }
         }
         
+        // The `message` property for `sendMessage` should be an array of `Part` objects.
         response = await chatRef.current.sendMessage({
-            message: { functionResponses }
+            message: functionResponses
         });
       }
       
