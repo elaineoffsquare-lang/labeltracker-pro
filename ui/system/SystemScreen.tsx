@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { db, DatabaseSchema } from '../../services/db'; 
 
 interface SystemScreenProps {
@@ -11,6 +11,7 @@ interface SystemScreenProps {
 
 const SystemScreen: React.FC<SystemScreenProps> = ({ setSyncStatus, dbState, onConfigSaved, isInitialSetup = false }) => {
   const [config, setConfig] = useState(db.getConfig());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSync = async () => {
     setSyncStatus('SYNCING');
@@ -36,6 +37,42 @@ const SystemScreen: React.FC<SystemScreenProps> = ({ setSyncStatus, dbState, onC
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('This will overwrite all data on this device with the contents of the backup file. Are you sure you want to continue?')) {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== 'string') throw new Error('File could not be read.');
+        const data = JSON.parse(text);
+        
+        if (data && data.products && data.orders && data.shipments && data.users && data.version) {
+          db.save(data, { silent: true });
+          alert('Data imported successfully! The application will now reload.');
+          window.location.reload();
+        } else {
+          throw new Error('Invalid or corrupted backup file format.');
+        }
+      } catch (error: any) {
+        alert(`Import failed: ${error.message}`);
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
   
   return (
@@ -157,9 +194,13 @@ const SystemScreen: React.FC<SystemScreenProps> = ({ setSyncStatus, dbState, onC
 
             <div className="p-8 bg-emerald-50/50 rounded-3xl border border-emerald-100">
               <h3 className="font-black text-emerald-900 uppercase text-[10px] tracking-widest mb-4">Infrastructure Backup</h3>
-              <div className="flex gap-4">
-                <button onClick={handleExport} className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">Export JSON</button>
-                <button onClick={db.reset} className="flex-1 py-4 bg-white border border-red-200 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">Factory Reset</button>
+              <div className="grid grid-cols-2 gap-4">
+                <button onClick={handleExport} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all">Export JSON</button>
+                <button onClick={handleImportClick} className="w-full py-4 bg-sky-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-sky-100 hover:bg-sky-700 transition-all">Import JSON</button>
+                <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".json" />
+                <div className="col-span-2">
+                  <button onClick={db.reset} className="w-full mt-2 py-4 bg-white border border-red-200 text-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-red-50 transition-all">Factory Reset</button>
+                </div>
               </div>
             </div>
           </div>
