@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { UserRole } from '../types';
+import { UserRole, Permission } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -8,23 +8,24 @@ interface LayoutProps {
   setActiveTab: (tab: string) => void;
   currentUser: any;
   onLogout: () => void;
+  permissions: Record<Permission, boolean>;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, currentUser, onLogout }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, setActiveTab, currentUser, onLogout, permissions }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-    { id: 'products', label: 'Products', icon: '📦' },
-    { id: 'orders', label: 'Orders', icon: '🛒' },
-    { id: 'shipments', label: 'Logistics', icon: '🚚' },
-    { id: 'users', label: 'System', icon: '⚙️' },
-    { id: 'help', label: 'Help / Guide', icon: '❓' },
+  const allMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: '📊', show: true },
+    { id: 'live_assistant', label: 'Live Assistant', icon: '🎙️', show: permissions.MANAGE_ORDERS },
+    { id: 'products', label: 'Products', icon: '📦', show: permissions.MANAGE_INVENTORY },
+    { id: 'orders', label: 'Orders', icon: '🛒', show: permissions.MANAGE_ORDERS },
+    { id: 'shipments', label: 'Logistics', icon: '🚚', show: permissions.MANAGE_LOGISTICS },
+    { id: 'user_mgmt', label: 'User Mgmt', icon: '👤', show: permissions.MANAGE_USERS },
+    { id: 'users', label: 'System', icon: '⚙️', show: currentUser.role === UserRole.ADMIN },
+    { id: 'help', label: 'Help / Guide', icon: '❓', show: true },
   ];
 
-  if (currentUser.role === UserRole.ADMIN) {
-    menuItems.splice(5, 0, { id: 'user_mgmt', label: 'User Mgmt', icon: '👤' });
-  }
+  const menuItems = allMenuItems.filter(item => item.show);
 
   const getSyncStatusColor = () => {
     switch(currentUser.syncStatus) {
