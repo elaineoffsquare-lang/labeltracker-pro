@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Screen } from './navigation/Screen';
 import Layout from './components/Layout';
 import LoginPage from './ui/auth/LoginPage';
-import InitialSetup from './ui/auth/InitialSetup';
+import SetupWizard from './ui/auth/SetupWizard';
 import Dashboard from './components/dashboard/Dashboard';
 import ProductList from './components/products/ProductList';
 import OrderList from './components/orders/OrderList';
@@ -11,16 +11,32 @@ import ShipmentListScreen from './ui/shipment/ShipmentListScreen';
 import HelpScreen from './ui/help/HelpScreen';
 import SystemScreen from './ui/system/SystemScreen';
 import UserManagementScreen from './ui/system/UserManagementScreen';
+import LiveAssistantScreen from './ui/live/LiveAssistantScreen';
 import { db, DatabaseSchema } from './services/db';
-import { Product, Order, Shipment, ShipmentStatus, ShipmentType, User, UserRole, Group } from './types';
+import { Product, Order, Shipment, ShipmentStatus, User, UserRole, Permission } from './types';
 
 const App: React.FC = () => {
+  const [isInitialized, setIsInitialized] = useState(!!localStorage.getItem('labeltracker_pro_unified_db'));
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [isConfigured, setIsConfigured] = useState(true); 
   const [currentScreen, setCurrentScreen] = useState<Screen>(Screen.Dashboard);
   const [syncStatus, setSyncStatus] = useState<'IDLE' | 'SYNCING' | 'SUCCESS' | 'ERROR'>('IDLE');
   const [dbState, setDbState] = useState<DatabaseSchema>(db.get());
   const autoSyncIntervalRef = useRef<number | null>(null);
+
+  const permissions = useMemo(() => {
+    const activePermissions = new Set(
+      dbState.groups.find(g => g.id === currentUser?.groupId)?.permissions || []
+    );
+    const isAdmin = currentUser?.role === UserRole.ADMIN;
+
+    return {
+      [Permission.MANAGE_INVENTORY]: isAdmin || activePermissions.has(Permission.MANAGE_INVENTORY),
+      [Permission.MANAGE_ORDERS]: isAdmin || activePermissions.has(Permission.MANAGE_ORDERS),
+      [Permission.MANAGE_LOGISTICS]: isAdmin || activePermissions.has(Permission.MANAGE_LOGISTICS),
+      [Permission.MANAGE_USERS]: isAdmin || activePermissions.has(Permission.MANAGE_USERS),
+      [Permission.VIEW_REPORTS]: isAdmin || activePermissions.has(Permission.VIEW_REPORTS),
+    };
+  }, [currentUser, dbState.groups]);
 
   const refreshData = useCallback(() => {
     setDbState(db.get());
@@ -88,7 +104,7 @@ const App: React.FC = () => {
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
-    setIsConfigured(true);
+    setIsInitialized(true);
     setCurrentScreen(Screen.Dashboard);
   };
   
@@ -97,34 +113,26 @@ const App: React.FC = () => {
     setCurrentScreen(Screen.Dashboard); // Reset screen to default
   };
 
-  const handleInitialSetupComplete = (admin: User, group: Group) => {
-    updateDb(s => ({
-      ...s,
-      groups: [...s.groups, group],
-      users: [...s.users, admin]
-    }));
-    setCurrentUser(admin);
-    setIsConfigured(true); 
-    setCurrentScreen(Screen.Dashboard);
-  };
-
-  const handleConfigSaved = () => {
-    setIsConfigured(true);
-    setCurrentScreen(Screen.Dashboard);
-  };
-
   const renderContent = () => {
+    // Permission-based routing
     switch (currentScreen) {
       case Screen.Dashboard: return <Dashboard state={dbState} />;
-      case Screen.Products: return <ProductList 
+      
+      case Screen.LiveAssistant: 
+        return permissions.MANAGE_ORDERS ? <LiveAssistantScreen state={dbState} onAddOrder={handleAddOrder} /> : null;
+
+      case Screen.Products: return permissions.MANAGE_INVENTORY ? <ProductList 
         products={dbState.products}
+        canManage={permissions.MANAGE_INVENTORY}
         onAdd={(p: Omit<Product, 'id'>) => updateDb(s => ({...s, products: [{...p, id: `p${Date.now()}`}, ...s.products]}))}
         onUpdate={(p: Product) => updateDb(s => ({...s, products: s.products.map(op => op.id === p.id ? p : op)}))}
         onDelete={(id: string) => updateDb(s => ({...s, products: s.products.filter(p => p.id !== id)}))}
-      />;
-      case Screen.Orders: return <OrderList 
+      /> : null;
+      
+      case Screen.Orders: return permissions.MANAGE_ORDERS ? <OrderList 
         orders={dbState.orders}
         products={dbState.products}
+        canManage={permissions.MANAGE_ORDERS}
         onAdd={handleAddOrder}
         onDelete={(id: string) => updateDb(s => {
           const order = s.orders.find(o => o.id === id);
@@ -132,22 +140,31 @@ const App: React.FC = () => {
           const updatedProducts = s.products.map(p => p.id === order.productId ? { ...p, stockQuantity: p.stockQuantity + order.quantity } : p);
           return {...s, products: updatedProducts, orders: s.orders.filter(o => o.id !== id)};
         })}
-      />;
-      case Screen.Shipments: return <ShipmentListScreen 
+      /> : null;
+
+      case Screen.Shipments: return permissions.MANAGE_LOGISTICS ? <ShipmentListScreen 
         shipments={dbState.shipments}
         products={dbState.products}
+        canManage={permissions.MANAGE_LOGISTICS}
         addShipment={(shipment: Omit<Shipment, 'id'>) => updateDb(s => ({...s, shipments: [{...shipment, id: `s${Date.now()}`}, ...s.shipments]}))}
         updateShipmentStatus={(id: string, status: ShipmentStatus) => updateDb(s => ({...s, shipments: s.shipments.map(sh => sh.id === id ? {...sh, status} : sh)}))}
-      />;
-      case Screen.UserMgmt: return <UserManagementScreen dbState={dbState} onUpdate={updateDb} />;
+      /> : null;
+      
+      case Screen.UserMgmt: return permissions.MANAGE_USERS ? <UserManagementScreen dbState={dbState} onUpdate={updateDb} /> : null;
+      
       case Screen.Help: return <HelpScreen />;
-      case Screen.Users: return <SystemScreen setSyncStatus={setSyncStatus} dbState={dbState} />;
-      default: return <Dashboard state={dbState} />;
+      
+      case Screen.Users: return currentUser?.role === UserRole.ADMIN ? <SystemScreen setSyncStatus={setSyncStatus} dbState={dbState} /> : null;
+      
+      default: 
+        // If user lands on a screen they don't have access to, default to dashboard
+        if (currentScreen !== Screen.Dashboard) setCurrentScreen(Screen.Dashboard);
+        return <Dashboard state={dbState} />;
     }
   };
 
-  if (dbState.users.length === 0) {
-    return <InitialSetup onComplete={handleInitialSetupComplete} />;
+  if (!isInitialized) {
+    return <SetupWizard />;
   }
 
   if (!currentUser) {
@@ -166,7 +183,8 @@ const App: React.FC = () => {
             'shipments': Screen.Shipments,
             'users': Screen.Users,
             'help': Screen.Help,
-            'user_mgmt': Screen.UserMgmt
+            'user_mgmt': Screen.UserMgmt,
+            'live_assistant': Screen.LiveAssistant
           };
           const target = mapping[tabId] || Screen.Dashboard;
           setCurrentScreen(target);
@@ -177,6 +195,7 @@ const App: React.FC = () => {
         syncStatus: syncStatus
       }}
       onLogout={handleLogout}
+      permissions={permissions}
     >
       {renderContent()}
     </Layout>
