@@ -10,6 +10,10 @@ interface DatabaseSchema {
 }
 
 export const getInventoryInsights = async (state: DatabaseSchema): Promise<string> => {
+  if (!process.env.API_KEY || process.env.API_KEY === '') {
+    return "AI Insights disabled: An API key has not been provided in the application's environment configuration.";
+  }
+  
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const prompt = `
@@ -28,6 +32,6 @@ export const getInventoryInsights = async (state: DatabaseSchema): Promise<strin
     return response.text || "Unable to generate insights at this time.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "AI Insights currently unavailable. Please check your API key.";
+    return "AI Insights unavailable: Could not connect to the API. Please check your key and network connection.";
   }
 };
