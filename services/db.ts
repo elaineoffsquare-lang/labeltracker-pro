@@ -6,6 +6,8 @@ const CONFIG_KEY = 'labeltracker_sys_config';
 
 interface SystemConfig {
   serverUrl: string;
+  lanPath: string;
+  vpnPath: string;
   isCloudEnabled: boolean;
   isAutoSyncEnabled: boolean;
   connectionMode: 'LAN' | 'VPN';
@@ -43,6 +45,8 @@ export const db = {
   getConfig: (): SystemConfig => {
     const defaults = { 
       serverUrl: '', 
+      lanPath: '',
+      vpnPath: '',
       isCloudEnabled: false, 
       isAutoSyncEnabled: false, 
       connectionMode: 'LAN' as 'LAN' | 'VPN', 
