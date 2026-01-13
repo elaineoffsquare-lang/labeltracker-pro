@@ -31,8 +31,12 @@ const INITIAL_STATE: DatabaseSchema = {
   ],
   orders: [],
   shipments: [],
-  groups: [], // Empty to trigger InitialSetup
-  users: []    // Empty to trigger InitialSetup
+  groups: [
+    { id: 'g-initial', name: 'Administrators', permissions: Object.values(Permission) }
+  ],
+  users: [
+    { id: 'u-initial', username: 'admin', password: 'password', displayName: 'Default Admin', role: UserRole.ADMIN, groupId: 'g-initial' }
+  ]
 };
 
 export const db = {
