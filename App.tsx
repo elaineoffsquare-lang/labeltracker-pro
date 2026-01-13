@@ -156,7 +156,7 @@ const App: React.FC = () => {
 
   return (
     <Layout 
-      activeTab={currentScreen.toLowerCase() === 'user_mgmt' ? 'user_mgmt' : currentScreen.toLowerCase()} 
+      activeTab={currentScreen.toLowerCase()} 
       setActiveTab={(tabId) => {
           // Explicit mapping from Layout ID to Screen Enum
           const mapping: Record<string, Screen> = {
