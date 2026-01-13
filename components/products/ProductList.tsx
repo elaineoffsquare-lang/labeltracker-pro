@@ -7,9 +7,10 @@ interface ProductListProps {
   onAdd: (p: Omit<Product, 'id'>) => void;
   onUpdate: (p: Product) => void;
   onDelete: (id: string) => void;
+  canManage: boolean;
 }
 
-const ProductList: React.FC<ProductListProps> = ({ products, onAdd, onUpdate, onDelete }) => {
+const ProductList: React.FC<ProductListProps> = ({ products, onAdd, onUpdate, onDelete, canManage }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   
@@ -166,16 +167,18 @@ const ProductList: React.FC<ProductListProps> = ({ products, onAdd, onUpdate, on
            >
              Export CSV
            </button>
-           <button 
-             onClick={() => { if(showForm) resetForm(); else setShowForm(true); }}
-             className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
-           >
-             {showForm ? 'Close' : '+ New Product'}
-           </button>
+           {canManage && (
+            <button 
+              onClick={() => { if(showForm) resetForm(); else setShowForm(true); }}
+              className="bg-blue-600 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95"
+            >
+              {showForm ? 'Close' : '+ New Product'}
+            </button>
+           )}
         </div>
       </div>
 
-      {showForm && (
+      {showForm && canManage && (
         <div className="bg-white p-12 rounded-[40px] shadow-2xl shadow-slate-200/50 border border-slate-100 animate-in slide-in-from-top-4 duration-500">
           <form onSubmit={handleSubmit} className="space-y-10">
             {/* Form fields... same as before */}
@@ -280,14 +283,16 @@ const ProductList: React.FC<ProductListProps> = ({ products, onAdd, onUpdate, on
                       <div className="text-[9px] text-slate-300 font-black uppercase mt-1.5 tracking-widest">ROLLS</div>
                     </td>
                     <td className="px-10 py-8 text-right">
-                      <div className="flex justify-end space-x-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                        <button onClick={() => setEditingProduct(p)} className="w-10 h-10 bg-white border border-slate-100 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm">
-                          ✏️
-                        </button>
-                        <button onClick={() => onDelete(p.id)} className="w-10 h-10 bg-white border border-slate-100 text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm">
-                          🗑️
-                        </button>
-                      </div>
+                      {canManage && (
+                        <div className="flex justify-end space-x-3 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                          <button onClick={() => setEditingProduct(p)} className="w-10 h-10 bg-white border border-slate-100 text-blue-500 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                            ✏️
+                          </button>
+                          <button onClick={() => onDelete(p.id)} className="w-10 h-10 bg-white border border-slate-100 text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm">
+                            🗑️
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
