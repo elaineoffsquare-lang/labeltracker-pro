@@ -7,9 +7,10 @@ interface OrderListProps {
   products: Product[];
   onAdd: (o: Omit<Order, 'id' | 'orderNumber' | 'totalAmount'>) => void;
   onDelete: (id: string) => void;
+  canManage: boolean;
 }
 
-const OrderList: React.FC<OrderListProps> = ({ orders, products, onAdd, onDelete }) => {
+const OrderList: React.FC<OrderListProps> = ({ orders, products, onAdd, onDelete, canManage }) => {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ 
     productId: '', 
@@ -100,16 +101,18 @@ const OrderList: React.FC<OrderListProps> = ({ orders, products, onAdd, onDelete
           >
             Export CSV
           </button>
-          <button 
-            onClick={() => setShowForm(!showForm)}
-            className="bg-green-600 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-green-700 transition-all shadow-xl shadow-green-100 active:scale-95"
-          >
-            {showForm ? 'Cancel' : '+ New Order'}
-          </button>
+          {canManage && (
+            <button 
+              onClick={() => setShowForm(!showForm)}
+              className="bg-green-600 text-white px-8 py-3 rounded-2xl font-black text-sm hover:bg-green-700 transition-all shadow-xl shadow-green-100 active:scale-95"
+            >
+              {showForm ? 'Cancel' : '+ New Order'}
+            </button>
+          )}
         </div>
       </div>
 
-      {showForm && (
+      {showForm && canManage && (
         <div className="bg-white p-12 rounded-[40px] shadow-2xl shadow-slate-200/50 border border-slate-100 animate-in slide-in-from-top-4 duration-500">
           <form onSubmit={handleOrder} className="space-y-10">
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -241,12 +244,14 @@ const OrderList: React.FC<OrderListProps> = ({ orders, products, onAdd, onDelete
                       <div className="text-xl font-black text-slate-900 tracking-tighter">${o.totalAmount.toFixed(2)}</div>
                     </td>
                     <td className="px-10 py-8 text-right">
-                      <button 
-                        onClick={() => onDelete(o.id)} 
-                        className="w-10 h-10 bg-white border border-slate-100 text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0"
-                      >
-                        🗑️
-                      </button>
+                      {canManage && (
+                        <button 
+                          onClick={() => onDelete(o.id)} 
+                          className="w-10 h-10 bg-white border border-slate-100 text-red-400 rounded-xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
