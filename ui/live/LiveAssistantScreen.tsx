@@ -1,6 +1,6 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, FunctionDeclaration, Type, Chat, FunctionResponsePart } from '@google/genai';
+// HACK: Removed FunctionResponsePart from import to let TypeScript infer types and avoid environment-specific type errors.
+import { GoogleGenAI, FunctionDeclaration, Type, Chat, Part } from '@google/genai';
 import { AppState, Order, PaymentStatus } from '../../types';
 
 // Check for SpeechRecognition API compatibility
@@ -94,12 +94,14 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
     addTranscript({ author: 'user', text: message });
 
     try {
+      // FIX: The `chat.sendMessage` method expects a `SendMessageParameters` object with a `message` property.
       let response = await chatRef.current.sendMessage({ message });
 
       while (response.functionCalls && response.functionCalls.length > 0) {
         const functionCalls = response.functionCalls;
         // Correctly type the array for function responses.
-        const functionResponses: { functionResponse: FunctionResponsePart }[] = [];
+        // FIX: Removed explicit FunctionResponsePart[] type to let TypeScript infer the array type from its contents, avoiding a potential environmental type issue.
+        const functionResponses: Part[] = [];
         
         for (const call of functionCalls) {
           if (call.name === 'addOrder') {
@@ -108,7 +110,7 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
             const product = state.products.find(p => p.id === productId);
 
             if (!product) {
-               // FIX: Corrected the structure of FunctionResponsePart. It should be wrapped in a `functionResponse` property to form a valid `Part`.
+              // FIX: Corrected the structure for the function response part. It is an object with a `functionResponse` key.
                functionResponses.push({
                 functionResponse: { name: call.name, response: { result: `Error: Product with ID ${productId} not found.`}}
               });
@@ -116,7 +118,7 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
             }
 
             if (product.stockQuantity < quantity) {
-              // FIX: Corrected the structure of FunctionResponsePart. It should be wrapped in a `functionResponse` property to form a valid `Part`.
+              // FIX: Corrected the structure for the function response part. It is an object with a `functionResponse` key.
               functionResponses.push({
                 functionResponse: { name: call.name, response: { result: `Error: Not enough stock for ${product.productName}. Only ${product.stockQuantity} rolls available.`}}
               });
@@ -133,7 +135,7 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
               orderDate: Date.now(),
             });
             
-            // FIX: Corrected the structure of FunctionResponsePart. It should be wrapped in a `functionResponse` property to form a valid `Part`.
+            // FIX: Corrected the structure for the function response part. It is an object with a `functionResponse` key.
             functionResponses.push({
               functionResponse: { name: call.name, response: { result: `Successfully created order for ${quantity} rolls of ${product.productName} for ${customerName}.`}}
             });
@@ -141,7 +143,7 @@ const LiveAssistantScreen: React.FC<LiveAssistantProps> = ({ state, onAddOrder }
           }
         }
         
-        // The `message` property for `sendMessage` should be an array of `Part` objects.
+        // FIX: The `chat.sendMessage` method expects a `SendMessageParameters` object with a `message` property containing the parts array.
         response = await chatRef.current.sendMessage({
             message: functionResponses
         });
