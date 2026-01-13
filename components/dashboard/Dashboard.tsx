@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { AppState } from '../../types';
 import { getInventoryInsights } from '../../services/gemini';
@@ -9,18 +9,27 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ state }) => {
-  const [insight, setInsight] = useState<string>("Analyzing your inventory data...");
-  const [loadingInsight, setLoadingInsight] = useState(true);
+  type InsightStatus = 'LOADING' | 'SUCCESS' | 'ERROR';
+
+  const [insight, setInsight] = useState<string>("");
+  const [insightStatus, setInsightStatus] = useState<InsightStatus>('LOADING');
+
+  const fetchInsight = useCallback(async () => {
+    setInsightStatus('LOADING');
+    const text = await getInventoryInsights(state);
+    
+    if (text.toLowerCase().includes("disabled") || text.toLowerCase().includes("unavailable")) {
+      setInsightStatus('ERROR');
+    } else {
+      setInsightStatus('SUCCESS');
+    }
+    setInsight(text);
+  }, [state]);
 
   useEffect(() => {
-    const fetchInsight = async () => {
-      setLoadingInsight(true);
-      const text = await getInventoryInsights(state);
-      setInsight(text);
-      setLoadingInsight(false);
-    };
     fetchInsight();
-  }, [state.products.length, state.orders.length]);
+  }, [fetchInsight]);
+
 
   const totalProducts = state.products.length;
   const totalRevenue = state.orders.reduce((sum, order) => sum + order.totalAmount, 0);
@@ -42,6 +51,61 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
     { name: 'Sat', rev: 900 },
     { name: 'Sun', rev: 1100 },
   ];
+  
+  const renderInsightBar = () => {
+    switch (insightStatus) {
+      case 'LOADING':
+        return (
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-xl shadow-lg text-white">
+            <div className="flex items-center space-x-3 mb-2">
+              <span className="text-xl">✨</span>
+              <h3 className="text-lg font-bold">Gemini Business Insights</h3>
+            </div>
+            <div className="animate-pulse space-y-2">
+              <div className="h-4 bg-white/20 rounded w-3/4"></div>
+              <div className="h-4 bg-white/20 rounded w-1/2"></div>
+            </div>
+          </div>
+        );
+      case 'SUCCESS':
+        return (
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-xl shadow-lg text-white">
+            <div className="flex items-center space-x-3 mb-2">
+              <span className="text-xl">✨</span>
+              <h3 className="text-lg font-bold">Gemini Business Insights</h3>
+            </div>
+            <p className="text-blue-50 leading-relaxed font-medium">
+              {insight}
+            </p>
+          </div>
+        );
+      case 'ERROR':
+        return (
+          <div className="bg-amber-50 border border-amber-200 p-6 rounded-xl shadow-sm text-amber-900">
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <div className="flex items-center space-x-3 mb-2">
+                  <span className="text-xl">⚠️</span>
+                  <h3 className="text-lg font-bold">Gemini Business Insights</h3>
+                </div>
+                <p className="text-amber-800 leading-relaxed font-medium text-sm">
+                  {insight}
+                </p>
+              </div>
+              <button
+                onClick={fetchInsight}
+                className="bg-amber-900/80 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-amber-900 transition-all active:scale-95 flex-shrink-0"
+                aria-label="Retry fetching AI insights"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -64,22 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ state }) => {
       </div>
 
       {/* AI Insights Bar */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 rounded-xl shadow-lg text-white">
-        <div className="flex items-center space-x-3 mb-2">
-          <span className="text-xl">✨</span>
-          <h3 className="text-lg font-bold">Gemini Business Insights</h3>
-        </div>
-        {loadingInsight ? (
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-white/20 rounded w-3/4"></div>
-            <div className="h-4 bg-white/20 rounded w-1/2"></div>
-          </div>
-        ) : (
-          <p className="text-blue-50 leading-relaxed font-medium">
-            {insight}
-          </p>
-        )}
-      </div>
+      {renderInsightBar()}
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
