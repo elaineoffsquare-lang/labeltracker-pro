@@ -6,5 +6,5 @@ export enum Screen {
   Shipments = 'SHIPMENTS',
   Users = 'USERS',
   Help = 'HELP',
-  UserMgmt = 'USER_MGMT'
+  UserMgmt = 'USER_MGMT',
 }
