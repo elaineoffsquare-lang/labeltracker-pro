@@ -1,130 +1,136 @@
 
-import React, { useState } from 'react';
-import { UserRole, Permission, Group, User } from '../../types';
+import React, { useState, useRef } from 'react';
+import InitialSetup from './InitialSetup';
+import { db } from '../../services/db';
+import { User, Group } from '../../types';
 
-interface InitialSetupProps {
-  onComplete: (admin: User, group: Group) => void;
-}
+const SetupWizard: React.FC = () => {
+  const [step, setStep] = useState<'welcome' | 'create' | 'join'>('welcome');
 
-const InitialSetup: React.FC<InitialSetupProps> = ({ onComplete }) => {
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    groupName: 'Administrators',
-    adminName: '',
-    username: '',
-    password: ''
-  });
+  const handleSetupComplete = (admin: User, group: Group) => {
+    const initialState = db.get();
+    db.save({
+      ...initialState,
+      groups: [group],
+      users: [admin]
+    });
+    alert('Network created successfully! You will now be taken to the login screen.');
+    window.location.reload();
+  };
+  
+  const WelcomeStep = () => (
+    <div className="text-center">
+      <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-blue-900/20 mb-6 mx-auto">LT</div>
+      <h1 className="text-4xl font-black text-slate-800 tracking-tighter italic uppercase">LABELTRACKER PRO</h1>
+      <p className="text-sm text-slate-500 font-medium mt-4 mb-12">High-performance Supply Chain & Inventory Management System</p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-lg mx-auto">
+        <button onClick={() => setStep('join')} className="p-8 bg-blue-50 hover:bg-blue-100 rounded-3xl border-2 border-blue-100/80 transition-all text-left">
+          <h2 className="font-black text-blue-800 text-lg">🔗 Join Existing Network</h2>
+          <p className="text-sm text-blue-700/80 mt-1">Connect this device to a primary node already running on your LAN or VPN.</p>
+        </button>
+        <button onClick={() => setStep('create')} className="p-8 bg-slate-50 hover:bg-slate-100 rounded-3xl border-2 border-slate-100 transition-all text-left">
+          <h2 className="font-black text-slate-800 text-lg">🚀 Create New Network</h2>
+          <p className="text-sm text-slate-500 mt-1">Set up a new, independent network on this device. This will become your primary node.</p>
+        </button>
+      </div>
+    </div>
+  );
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const JoinStep = () => {
+    const [serverUrl, setServerUrl] = useState('');
+    const [isConnected, setIsConnected] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleConnect = (e: React.FormEvent) => {
+      e.preventDefault();
+      db.saveConfig({ ...db.getConfig(), serverUrl, rememberServerUrl: true });
+      setIsConnected(true);
+    };
     
-    const newGroup: Group = {
-      id: 'g-initial',
-      name: formData.groupName,
-      permissions: Object.values(Permission)
+    const handleImportClick = () => {
+      fileInputRef.current?.click();
     };
 
-    const newAdmin: User = {
-      id: 'u-initial',
-      username: formData.username,
-      password: formData.password,
-      displayName: formData.adminName,
-      role: UserRole.ADMIN,
-      groupId: newGroup.id
+    const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const text = e.target?.result;
+          if (typeof text !== 'string') throw new Error('File could not be read.');
+          const data = JSON.parse(text);
+          
+          if (data && data.products && data.orders && data.shipments && data.users && data.version) {
+            db.save(data, { silent: true });
+            alert('Sync successful! This device is now linked to the primary node.');
+            window.location.reload();
+          } else {
+            throw new Error('Invalid or corrupted network file.');
+          }
+        } catch (error: any) {
+          alert(`Sync failed: ${error.message}`);
+        } finally {
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      };
+      reader.readAsText(file);
     };
 
-    onComplete(newAdmin, newGroup);
+    return (
+      <div>
+        <button onClick={() => setStep('welcome')} className="text-sm font-bold text-slate-400 mb-8 hover:text-slate-700">← Back</button>
+        <h1 className="text-3xl font-black text-slate-800 tracking-tighter mb-2">Join Existing Network</h1>
+        <p className="text-sm text-slate-500 leading-relaxed font-medium mb-8">Enter the IP address of your primary node to initiate a connection. This is typically the computer where you first set up LabelTracker Pro.</p>
+
+        {!isConnected ? (
+          <form onSubmit={handleConnect} className="flex items-end gap-4 p-8 bg-slate-50 rounded-3xl border border-slate-100">
+            <div className="flex-grow">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Primary Node Address (LAN IP)</label>
+              <input
+                required
+                type="text"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                className="w-full bg-white border border-slate-200 p-4 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-700 transition-all"
+                placeholder="e.g., 192.168.1.50:3000"
+              />
+            </div>
+            <button type="submit" className="h-[60px] px-8 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all">Connect & Sync</button>
+          </form>
+        ) : (
+          <div className="p-8 bg-emerald-50 rounded-3xl border-2 border-emerald-200 text-center animate-in fade-in duration-500">
+            <div className="text-4xl mb-4">✅</div>
+            <h2 className="text-xl font-black text-emerald-800">Connection Initiated!</h2>
+            <p className="text-emerald-700/80 mb-6">Your primary node at <strong className="font-bold">{serverUrl}</strong> has been saved.</p>
+            <p className="text-sm text-emerald-900 mb-6 max-w-md mx-auto">To complete the secure one-time data transfer, export the database from your primary device (`System` → `Export JSON`) and import it here.</p>
+            <button onClick={handleImportClick} className="px-10 py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-200 hover:bg-emerald-700 transition-all">
+              Import Network File
+            </button>
+            <input type="file" ref={fileInputRef} onChange={handleFileImport} style={{ display: 'none' }} accept=".json" />
+          </div>
+        )}
+      </div>
+    );
   };
 
+  const CreateStep = () => (
+    <div>
+        <button onClick={() => setStep('welcome')} className="text-sm font-bold text-slate-400 mb-4 hover:text-slate-700">← Back</button>
+        <InitialSetup onComplete={handleSetupComplete} />
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl bg-white rounded-[40px] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-700">
-        <div className="p-12">
-          {/* Progress Header */}
-          <div className="flex items-center justify-between mb-12">
-            <div className="flex items-center gap-4">
-               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black">1</div>
-               <div>
-                 <h2 className="text-xl font-black text-slate-800 tracking-tight leading-none">Initialization</h2>
-                 <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Step 1: Authority Setup</p>
-               </div>
-            </div>
-            <div className="flex gap-1">
-              <div className="w-8 h-1 bg-blue-600 rounded-full"></div>
-              <div className="w-8 h-1 bg-slate-100 rounded-full"></div>
-            </div>
-          </div>
-
-          <div className="mb-10">
-            <h1 className="text-3xl font-black text-slate-800 tracking-tighter mb-2 italic uppercase">System Bootstrap</h1>
-            <p className="text-sm text-slate-500 leading-relaxed font-medium">No users detected. Please initialize the primary administrative node for this network.</p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Primary Group Name</label>
-                  <input 
-                    required 
-                    value={formData.groupName}
-                    onChange={e => setFormData({...formData, groupName: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-700" 
-                    placeholder="e.g. Executive Board"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Admin Display Name</label>
-                  <input 
-                    required 
-                    value={formData.adminName}
-                    onChange={e => setFormData({...formData, adminName: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-700" 
-                    placeholder="e.g. John Doe"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Root Username</label>
-                  <input 
-                    required 
-                    value={formData.username}
-                    onChange={e => setFormData({...formData, username: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-700" 
-                    placeholder="admin"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Security Access Key (Password)</label>
-                  <input 
-                    required 
-                    type="password"
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-100 p-4 rounded-2xl focus:ring-4 focus:ring-blue-500/10 outline-none font-bold text-slate-700" 
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button 
-              type="submit"
-              className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
-            >
-              Initialize Node & Proceed to Network Config
-              <span>→</span>
-            </button>
-          </form>
-        </div>
-        <div className="bg-slate-50 p-6 text-center border-t border-slate-100">
-           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Database Version 4.2.0-secure-bootstrap</p>
-        </div>
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+      <div className="w-full max-w-3xl bg-white rounded-[40px] shadow-2xl p-12 animate-in fade-in zoom-in-95 duration-500">
+        {step === 'welcome' && <WelcomeStep />}
+        {step === 'create' && <CreateStep />}
+        {step === 'join' && <JoinStep />}
       </div>
     </div>
   );
 };
 
-export default InitialSetup;
+export default SetupWizard;
