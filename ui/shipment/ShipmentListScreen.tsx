@@ -7,9 +7,10 @@ interface ShipmentListScreenProps {
   products: Product[];
   addShipment: (shipment: Omit<Shipment, 'id'>) => void;
   updateShipmentStatus: (id: string, status: ShipmentStatus) => void;
+  canManage: boolean;
 }
 
-const ShipmentListScreen: React.FC<ShipmentListScreenProps> = ({ shipments, products, addShipment, updateShipmentStatus }) => {
+const ShipmentListScreen: React.FC<ShipmentListScreenProps> = ({ shipments, products, addShipment, updateShipmentStatus, canManage }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState<Partial<Shipment>>({
     shipmentType: ShipmentType.INBOUND,
@@ -70,15 +71,17 @@ const ShipmentListScreen: React.FC<ShipmentListScreenProps> = ({ shipments, prod
           <h2 className="text-3xl font-black text-[#1E293B] tracking-tight leading-none">Logistics Tracker</h2>
           <p className="text-[11px] text-slate-400 font-black uppercase tracking-[0.25em] mt-3">Inbound Restocks & Outbound Logistics</p>
         </div>
-        <button 
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="bg-[#0F172A] text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-300 active:scale-95"
-        >
-          {showAddForm ? 'Cancel' : '+ New Shipment'}
-        </button>
+        {canManage && (
+          <button 
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="bg-[#0F172A] text-white px-8 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-300 active:scale-95"
+          >
+            {showAddForm ? 'Cancel' : '+ New Shipment'}
+          </button>
+        )}
       </div>
 
-      {showAddForm && (
+      {showAddForm && canManage && (
         <div className="bg-white p-12 rounded-[40px] shadow-2xl shadow-slate-200/50 border border-slate-100 animate-in slide-in-from-top-4 duration-500">
           <form onSubmit={handleCreateShipment} className="space-y-10">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
@@ -173,11 +176,11 @@ const ShipmentListScreen: React.FC<ShipmentListScreenProps> = ({ shipments, prod
                     <button
                       key={status}
                       onClick={() => updateShipmentStatus(s.id, status)}
-                      disabled={isActive}
+                      disabled={!canManage || isActive}
                       className={`flex-1 text-[9px] font-black px-1 py-2.5 rounded-xl transition-all duration-300 border uppercase tracking-tighter ${
                         isActive 
                           ? getStatusColor(status) + ' border-transparent'
-                          : 'bg-white text-slate-200 border-slate-50 hover:border-slate-200 hover:text-slate-300'
+                          : `bg-white text-slate-200 border-slate-50 ${canManage ? 'hover:border-slate-200 hover:text-slate-300' : 'cursor-not-allowed'}`
                       }`}
                     >
                       {status.replace('_', ' ')}
